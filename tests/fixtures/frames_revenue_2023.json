@@ -1,0 +1,27 @@
+{
+  "taxonomy": "us-gaap",
+  "tag": "Revenues",
+  "ccp": "CY2023",
+  "uom": "USD",
+  "label": "Revenues",
+  "description": "Amount of revenue recognized.",
+  "pts": 2,
+  "data": [
+    {
+      "accn": "0000320193-23-000106",
+      "cik": 320193,
+      "entityName": "Apple Inc.",
+      "start": "2022-09-25",
+      "end": "2023-09-30",
+      "val": 383285000000
+    },
+    {
+      "accn": "0000789019-23-000077",
+      "cik": 789019,
+      "entityName": "Microsoft Corporation",
+      "start": "2022-07-01",
+      "end": "2023-06-30",
+      "val": 211915000000
+    }
+  ]
+}
