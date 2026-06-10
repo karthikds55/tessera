@@ -11,11 +11,18 @@ import pytest
 from tessera.config import Settings
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_fixture(name: str) -> Any:
     """Load and parse a JSON fixture by file name."""
     return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def repo_root() -> Path:
+    """The repository root, for resolving paths like the offline ticker-map fixture."""
+    return REPO_ROOT
 
 
 @pytest.fixture
