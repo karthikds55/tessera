@@ -48,15 +48,25 @@ def test(ctx: Context, live: bool = False) -> None:
     ctx.run(f"uv run pytest {marker}".strip(), pty=False)
 
 
-@task(help={"tickers": "Comma-separated ticker symbols to resolve into the universe."})
-def seed(ctx: Context, tickers: str = DEFAULT_UNIVERSE) -> None:
-    """Build the initial ticker/CIK universe. (Implemented in PR-04.)."""
-    ctx.run(f"uv run python -m scripts.seed_universe --tickers {tickers}", pty=False, warn=True)
+@task(
+    help={
+        "tickers": "Comma-separated ticker symbols to resolve into the universe.",
+        "offline": "Resolve against the local ticker-map fixture instead of the live SEC map.",
+    }
+)
+def seed(ctx: Context, tickers: str = DEFAULT_UNIVERSE, offline: bool = False) -> None:
+    """Build the initial ticker/CIK universe (writes data/universe.json)."""
+    flag = " --offline" if offline else ""
+    ctx.run(
+        f"uv run python -m scripts.seed_universe --tickers {tickers}{flag}",
+        pty=False,
+        warn=True,
+    )
 
 
 @task
 def ingest(ctx: Context) -> None:
-    """Pull SEC facts and land them as Iceberg bronze. (Implemented in PR-03/04/05.)."""
+    """Extract SEC facts for the seeded universe via dlt (DuckDB bronze; Iceberg in PR-05)."""
     ctx.run("uv run python -m tessera.ingestion.run", pty=False, warn=True)
 
 
