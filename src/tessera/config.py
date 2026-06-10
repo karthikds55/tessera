@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     iceberg_catalog_uri: str = "sqlite:///./data/iceberg_catalog.db"
     iceberg_warehouse: str = "./data/iceberg_warehouse"
 
+    # --- dlt extract-load pipeline ---------------------------------------------
+    dlt_pipeline_name: str = "tessera_edgar"
+    dlt_dataset_name: str = "bronze"
+
     # --- Object storage (MinIO local / S3 cloud) -------------------------------
     s3_endpoint: str = "http://localhost:9000"
     s3_bucket: str = "tessera"
@@ -68,6 +72,11 @@ class Settings(BaseSettings):
     # --- Optional integrations -------------------------------------------------
     price_provider_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
+
+    @property
+    def universe_path(self) -> Path:
+        """Return the path of the seeded ticker/CIK universe file."""
+        return self.data_dir / "universe.json"
 
     @property
     def is_local(self) -> bool:
