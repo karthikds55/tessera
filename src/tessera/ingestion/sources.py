@@ -20,6 +20,7 @@ PR-05, which appends the parquet/DuckDB output dlt produces here.
 
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING, Any
 
 import dlt
@@ -34,8 +35,28 @@ if TYPE_CHECKING:
 
 _log = get_logger("tessera.ingestion.sources")
 
+# The natural identity of a fact. ``start``/``end``/``fp``/``frame`` are nullable,
+# so they cannot be used as a dlt merge ``primary_key`` directly (dlt marks key
+# columns NOT NULL and rejects null periods); we hash them into a non-null
+# surrogate ``fact_id`` instead.
+_FACT_KEY_FIELDS = ("cik", "taxonomy", "raw_tag", "unit", "accn", "start", "end", "fp", "frame")
 
-@dlt.source(name="edgar")  # type: ignore[misc]  # dlt decorator is untyped (Any)
+
+def _fact_id(record: dict[str, Any]) -> str:
+    """Return a stable surrogate key for a fact row's natural identity.
+
+    Args:
+        record: A flattened fact row (``FactRow`` dumped to JSON-able types).
+
+    Returns:
+        A deterministic hex digest over the natural-key fields, with nulls
+        coalesced to the empty string so a re-fetched filing upserts in place.
+    """
+    parts = "|".join(str(record.get(field) or "") for field in _FACT_KEY_FIELDS)
+    return hashlib.sha1(parts.encode("utf-8")).hexdigest()  # noqa: S324 — identity, not security
+
+
+@dlt.source(name="edgar")
 def edgar_source(client: EdgarClient, ciks: list[str]) -> Any:
     """Build the EDGAR dlt source exposing the bronze EL resources.
 
@@ -48,10 +69,10 @@ def edgar_source(client: EdgarClient, ciks: list[str]) -> Any:
         ``ticker_map``) wired into a single source.
     """
 
-    @dlt.resource(  # type: ignore[misc]  # dlt decorator is untyped (Any)
+    @dlt.resource(
         name="company_facts",
         write_disposition="merge",
-        primary_key=("cik", "taxonomy", "raw_tag", "unit", "accn", "start", "end"),
+        primary_key="fact_id",
     )
     def company_facts(
         # dlt requires the incremental cursor as an argument default; it inspects
@@ -59,6 +80,9 @@ def edgar_source(client: EdgarClient, ciks: list[str]) -> Any:
         filed: Any = dlt.sources.incremental("filed", initial_value=None),  # noqa: B008
     ) -> Iterator[dict[str, Any]]:
         """Yield flattened fact rows for each CIK, newest filings first.
+
+        Each row carries a surrogate ``fact_id`` (see :func:`_fact_id`) used as
+        the merge key, since the natural period columns are nullable.
 
         Args:
             filed: dlt incremental cursor on the ``filed`` date; re-runs resume
@@ -69,9 +93,11 @@ def edgar_source(client: EdgarClient, ciks: list[str]) -> Any:
             log.info("extract_company_facts")
             facts = client.get_company_facts(cik)
             for row in flatten_company_facts(facts):
-                yield row.model_dump(mode="json")
+                record = row.model_dump(mode="json")
+                record["fact_id"] = _fact_id(record)
+                yield record
 
-    @dlt.resource(  # type: ignore[misc]  # dlt decorator is untyped (Any)
+    @dlt.resource(
         name="submissions",
         write_disposition="merge",
         primary_key="cik",
@@ -83,7 +109,7 @@ def edgar_source(client: EdgarClient, ciks: list[str]) -> Any:
             log.info("extract_submissions")
             yield client.get_submissions(cik).model_dump(mode="json")
 
-    @dlt.resource(  # type: ignore[misc]  # dlt decorator is untyped (Any)
+    @dlt.resource(
         name="ticker_map",
         write_disposition="replace",
     )
