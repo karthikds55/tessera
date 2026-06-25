@@ -131,6 +131,8 @@ ignore_missing_imports = true
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Put the repo root on sys.path so the top-level `scripts` package imports under test.
+pythonpath = ["."]
 addopts = "-ra -q -m 'not live'"
 markers = [
     "live: tests that hit the live SEC EDGAR API (deselected by default)",

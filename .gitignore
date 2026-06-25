@@ -18,12 +18,14 @@ env/
 !.env.example
 
 # Local data, warehouse, lakehouse
-data/
+# NB: anchored to the repo root so these runtime dirs do not shadow the
+# src/tessera/warehouse and lakehouse source packages.
+/data/
 logs/
 *.duckdb
 *.duckdb.wal
-warehouse/
-iceberg_warehouse/
+/warehouse/
+/iceberg_warehouse/
 catalog.db
 
 # dbt

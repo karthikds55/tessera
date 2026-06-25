@@ -1,10 +1,13 @@
-"""Run the dlt extract-load over the seeded universe (``inv ingest``).
+"""Run the EDGAR ingest over the seeded universe (``inv ingest``).
 
-Reads the working universe written by :mod:`scripts.seed_universe`, then runs the
-:func:`~tessera.ingestion.sources.edgar_source` pipeline into the local DuckDB
-destination dlt manages. This is the EL half of the pipeline; the Iceberg bronze
-landing is added in PR-05, which consumes the DuckDB/parquet output produced here.
-Until then ``inv ingest`` stops at this dlt load step.
+Two stages, end to end:
+
+1. **Extract-load** — the :func:`~tessera.ingestion.sources.edgar_source` dlt
+   pipeline pulls the working universe (written by :mod:`scripts.seed_universe`)
+   into the DuckDB dataset dlt manages, handling incremental state and merges.
+2. **Land** — :func:`~tessera.lakehouse.landing.land_bronze_from_duckdb` appends
+   that DuckDB output into the durable Iceberg bronze tables, which are then
+   registered as DuckDB views for dbt to read.
 """
 
 from __future__ import annotations
@@ -16,7 +19,10 @@ import dlt
 from tessera.config import get_settings
 from tessera.ingestion.edgar_client import EdgarClient
 from tessera.ingestion.sources import edgar_source
+from tessera.lakehouse.catalog import build_catalog, ensure_namespace
+from tessera.lakehouse.landing import land_bronze_from_duckdb
 from tessera.logging import configure_logging, get_logger
+from tessera.warehouse.duckdb_io import connect, register_bronze_views
 
 if TYPE_CHECKING:
     from tessera.config import Settings
@@ -28,8 +34,8 @@ def _build_pipeline(settings: Settings) -> Any:
     """Construct the dlt pipeline writing to the local DuckDB destination.
 
     Args:
-        settings: Application settings supplying the pipeline name, dataset, and
-            DuckDB path.
+        settings: Application settings supplying the pipeline name, dataset,
+            DuckDB path, and data dir (which holds dlt's working state).
 
     Returns:
         The configured dlt pipeline.
@@ -38,17 +44,20 @@ def _build_pipeline(settings: Settings) -> Any:
         pipeline_name=settings.dlt_pipeline_name,
         destination=dlt.destinations.duckdb(str(settings.duckdb_path)),
         dataset_name=settings.dlt_dataset_name,
+        # Keep dlt's pipeline state under the project data dir so runs are
+        # isolated per deployment (and per temp dir in tests).
+        pipelines_dir=str(settings.data_dir / "dlt"),
     )
 
 
-def run_ingest(settings: Settings | None = None) -> Any:
-    """Extract EDGAR facts for the seeded universe and load them to DuckDB bronze.
+def run_ingest(settings: Settings | None = None) -> list[str]:
+    """Extract EDGAR facts for the seeded universe and land them in Iceberg bronze.
 
     Args:
         settings: Application settings; defaults to the process-wide instance.
 
     Returns:
-        The dlt load info for the run.
+        The DuckDB view names registered over the Iceberg bronze tables.
     """
     from scripts.seed_universe import read_universe  # noqa: PLC0415 — avoid import cycle
 
@@ -61,10 +70,19 @@ def run_ingest(settings: Settings | None = None) -> Any:
 
     pipeline = _build_pipeline(settings)
     with EdgarClient(settings) as client:
-        load_info = pipeline.run(edgar_source(client, ciks))
+        pipeline.run(edgar_source(client, ciks))
+    _log.info("dlt_load_complete", pipeline=settings.dlt_pipeline_name)
 
-    _log.info("ingest_complete", pipeline=settings.dlt_pipeline_name)
-    return load_info
+    catalog = build_catalog(settings)
+    ensure_namespace(catalog)
+    conn = connect(settings)
+    try:
+        landed = land_bronze_from_duckdb(conn, catalog, dataset=settings.dlt_dataset_name)
+        views = register_bronze_views(conn, catalog)
+    finally:
+        conn.close()
+    _log.info("ingest_complete", landed=landed, views=views)
+    return views
 
 
 def main() -> int:
@@ -73,8 +91,8 @@ def main() -> int:
     Returns:
         Process exit code (0 on success).
     """
-    load_info = run_ingest()
-    _log.info("ingest_load_info", info=str(load_info))
+    views = run_ingest()
+    _log.info("ingest_views", views=views)
     return 0
 
 
