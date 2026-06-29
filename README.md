@@ -1,5 +1,7 @@
 # tessera
 
+[![CI](https://github.com/karthikds55/tessera/actions/workflows/ci.yml/badge.svg)](https://github.com/karthikds55/tessera/actions/workflows/ci.yml)
+
 Open-source fundamentals data engine: ingest fragmented SEC filings, normalize, query, screen.
 
 Tessera builds the normalization engine that paid financial-data vendors charge for. It ingests
