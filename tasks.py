@@ -70,6 +70,12 @@ def ingest(ctx: Context) -> None:
     ctx.run("uv run python -m tessera.ingestion.run", pty=False, warn=True)
 
 
+@task(name="ci-seed")
+def ci_seed(ctx: Context) -> None:
+    """Seed Iceberg bronze from local fixtures (offline) for CI's dbt build."""
+    ctx.run("uv run python -m scripts.ci_seed", pty=False)
+
+
 @task
 def build(ctx: Context) -> None:
     """Build dbt models on the DuckDB target. (Implemented in PR-06.)."""
