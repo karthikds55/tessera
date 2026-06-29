@@ -27,7 +27,7 @@ _FIXTURES_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
 
 # The single issuer the CI universe is seeded with (matches the fixtures).
 _CI_UNIVERSE = [
-    {"ticker": "AAPL", "cik": 320193, "cik_padded": "0000320193", "title": "Apple Inc."}
+    {"ticker": "AAPL", "cik": 320193, "cik_padded": "0000320193", "title": "Apple Inc."},
 ]
 
 _log = get_logger("scripts.ci_seed")
