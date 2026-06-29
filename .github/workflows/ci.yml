@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: lint · type-check · test · dbt build
+    runs-on: ubuntu-latest
+    env:
+      # Local profile, offline: the dbt build reads fixture-seeded bronze, never SEC.
+      PROFILE: local
+      SEC_USER_AGENT: "Tessera CI ci@example.com"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv + Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Mypy (strict)
+        run: uv run mypy --strict src
+
+      - name: Pytest (offline)
+        run: uv run pytest -m 'not live'
+
+      # Seed Iceberg bronze from tests/fixtures so the dbt build needs no network.
+      - name: Seed bronze from fixtures (offline)
+        run: uv run python -m scripts.ci_seed
+
+      # dbt deps/seed/build on the DuckDB target. Run from the project dir so the
+      # profile's relative duckdb path resolves to the fixture-seeded warehouse.
+      - name: dbt build (DuckDB target)
+        working-directory: dbt/edgar
+        run: |
+          uv run dbt deps
+          uv run dbt seed
+          uv run dbt build
