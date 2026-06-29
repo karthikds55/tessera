@@ -85,6 +85,12 @@ def dashboard(ctx: Context) -> None:
     ctx.run("uv run streamlit run dashboard/app.py", pty=False, warn=True)
 
 
+@task
+def dagster(ctx: Context) -> None:
+    """Launch the Dagster UI over the tessera asset graph (`dagster dev`)."""
+    ctx.run("uv run dagster dev -f orchestration/definitions.py", pty=False, warn=True)
+
+
 @task(pre=[seed, ingest, build])
 def pipeline(ctx: Context) -> None:
     """Run the full local pipeline: seed -> ingest -> iceberg bronze -> dbt build."""
