@@ -1,0 +1,32 @@
+# Two interchangeable targets, switchable with `dbt build --target <name>` and
+# no model edits. `duckdb` (default) reads the local warehouse PR-05 builds;
+# `snowflake` is driven entirely by environment variables for the cloud profile.
+edgar:
+  target: duckdb
+  outputs:
+    duckdb:
+      type: duckdb
+      # Relative to dbt/edgar (the cwd `inv build` runs from); override with
+      # TESSERA_DUCKDB_PATH to point at another warehouse.
+      path: "{{ env_var('TESSERA_DUCKDB_PATH', '../../data/tessera.duckdb') }}"
+      # DuckDB's default catalog schema; the bronze views land here and dbt
+      # appends per-layer suffixes (main_staging, main_marts).
+      schema: main
+      # Load the extensions the bronze views may use (iceberg_scan / httpfs);
+      # the Parquet-fallback views read fine without them, so install is
+      # best-effort and the build still works offline.
+      extensions:
+        - httpfs
+        - iceberg
+      threads: 4
+
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'SYSADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'TESSERA') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'PUBLIC') }}"
+      threads: 4

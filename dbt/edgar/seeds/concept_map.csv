@@ -1,0 +1,11 @@
+raw_tag,taxonomy,standard_concept,sign,notes
+RevenueFromContractWithCustomerExcludingAssessedTax,us-gaap,revenue,1,ASC 606 top-line revenue excluding sales/excise taxes (current preferred tag)
+RevenueFromContractWithCustomerIncludingAssessedTax,us-gaap,revenue,1,ASC 606 top-line revenue including assessed taxes
+Revenues,us-gaap,revenue,1,Pre-606 / general total revenues element
+SalesRevenueNet,us-gaap,revenue,1,Legacy alias for net sales revenue (pre-606 filings)
+NetIncomeLoss,us-gaap,net_income,1,Net income attributable to the parent
+ProfitLoss,us-gaap,net_income,1,Consolidated profit/loss incl. noncontrolling interest (fallback)
+Assets,us-gaap,total_assets,1,Total assets
+StockholdersEquity,us-gaap,total_equity,1,Equity attributable to parent stockholders
+StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest,us-gaap,total_equity,1,Total equity including noncontrolling interest (fallback)
+Liabilities,us-gaap,total_liabilities,1,Total liabilities

@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  # The Iceberg bronze tables, exposed to DuckDB as top-level views by
+  # tessera.warehouse.duckdb_io.register_bronze_views (PR-05). The views land in
+  # the default `main` schema with a `bronze_` name prefix.
+  - name: bronze
+    schema: main
+    description: >
+      Raw, typed SEC EDGAR facts landed by the dlt -> Iceberg pipeline and
+      registered as DuckDB views. One row per reported XBRL value.
+    tables:
+      - name: company_facts
+        identifier: bronze_company_facts
+        description: Flattened one-fact-per-row XBRL grain.
+      - name: submissions
+        identifier: bronze_submissions
+        description: One metadata row per issuer (feeds dim_company).
+      - name: ticker_map
+        identifier: bronze_ticker_map
+        description: Ticker -> CIK directory.

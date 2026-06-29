@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: stg_companyfacts
+    description: Typed, renamed bronze facts — one row per reported XBRL value.
+    columns:
+      - name: cik
+        description: Central Index Key of the issuer.
+        tests:
+          - not_null
+      - name: raw_tag
+        description: Raw XBRL tag as filed.
+        tests:
+          - not_null
+      - name: value
+        description: Reported numeric value (in `unit`).
+        tests:
+          - not_null
+      - name: taxonomy
+        tests:
+          - not_null
+
+  - name: stg_submissions
+    description: One cleaned metadata row per issuer.
+    columns:
+      - name: cik
+        description: Central Index Key of the issuer.
+        tests:
+          - not_null
+          - unique
+      - name: company_name
+        tests:
+          - not_null
+
+  - name: stg_ticker_map
+    description: Ticker -> CIK directory, tickers upper-cased.
+    columns:
+      - name: cik
+        tests:
+          - not_null
+      - name: ticker
+        tests:
+          - not_null
+          - unique

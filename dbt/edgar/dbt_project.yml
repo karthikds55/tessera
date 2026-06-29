@@ -1,0 +1,48 @@
+name: "edgar"
+version: "1.0.0"
+config-version: 2
+
+# Resolved by profiles.yml in this directory (dbt searches the cwd, which
+# `inv build` sets to dbt/edgar before invoking dbt).
+profile: "edgar"
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Layered materializations: thin SQL views over bronze for staging, ephemeral
+# CTEs for intermediate plumbing, and durable tables for the marts the
+# dashboard / orchestration read.
+models:
+  edgar:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: ephemeral
+    marts:
+      +materialized: table
+      +schema: marts
+  # Elementary ships data-observability models; we install the package (per the
+  # plan) but keep its models inert so `dbt build` stays green without the
+  # extra schema/on-run-end wiring. Enable in a later observability PR.
+  elementary:
+    +enabled: false
+
+seeds:
+  edgar:
+    concept_map:
+      +column_types:
+        raw_tag: varchar
+        taxonomy: varchar
+        standard_concept: varchar
+        sign: integer
+        notes: varchar
