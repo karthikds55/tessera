@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: dim_company
+    description: Company dimension (SCD2). One row per issuer version.
+    columns:
+      - name: company_key
+        description: Surrogate key over (cik, valid_from).
+        tests:
+          - not_null
+          - unique
+      - name: cik
+        tests:
+          - not_null
+      - name: is_current
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+
+  - name: fct_financials
+    description: >
+      Long-grain standardized facts: one authoritative value per
+      (company, fiscal year, fiscal period, standard concept).
+    columns:
+      - name: financial_key
+        description: Surrogate key over the fact grain.
+        tests:
+          - not_null
+          - unique
+      - name: cik
+        tests:
+          - not_null
+          # Referential integrity: every fact's issuer exists in the dimension.
+          - relationships:
+              to: ref('dim_company')
+              field: cik
+      - name: standard_concept
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - revenue
+                - net_income
+                - total_assets
+                - total_equity
+                - total_liabilities
+      - name: value
+        tests:
+          - not_null
+
+  - name: mart_fundamentals_annual
+    description: Wide company-year fundamentals with derived ratios (screener mart).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - cik
+            - fiscal_year
+    columns:
+      - name: cik
+        tests:
+          - not_null
+      - name: fiscal_year
+        tests:
+          - not_null
+      - name: net_margin
+        description: net_income / revenue. Bounded sanity range; NULL allowed.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -10
+              max_value: 10
+              inclusive: true
+              # Skip rows where the ratio is undefined.
+              where: "net_margin is not null"
